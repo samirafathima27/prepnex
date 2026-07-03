@@ -5,6 +5,7 @@ import com.prepnex.service.ApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class ApplicationController {
     private final ApplicationService applicationService;
 
     @PostMapping
-    public ResponseEntity<Application> addApplication(@RequestBody Application application) {
+    public ResponseEntity<Application> addApplication(@Valid @RequestBody Application application) {
         return ResponseEntity.ok(applicationService.addApplication(application));
     }
 
@@ -27,7 +28,7 @@ public class ApplicationController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Application> updateApplication(@PathVariable Long id, @RequestBody Application application) {
+    public ResponseEntity<Application> updateApplication(@PathVariable Long id, @Valid @RequestBody Application application) {
         return ResponseEntity.ok(applicationService.updateApplication(id, application));
     }
 
