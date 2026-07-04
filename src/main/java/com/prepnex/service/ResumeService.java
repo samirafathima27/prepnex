@@ -1,8 +1,11 @@
 package com.prepnex.service;
 
 import com.prepnex.model.Resume;
+import com.prepnex.model.User;
 import com.prepnex.repository.ResumeRepository;
+import com.prepnex.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +15,21 @@ import java.util.List;
 public class ResumeService {
 
     private final ResumeRepository resumeRepository;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     public Resume addResume(Resume resume) {
+        resume.setUser(getCurrentUser());
         return resumeRepository.save(resume);
     }
 
     public List<Resume> getAllResumes() {
-        return resumeRepository.findAll();
+        return resumeRepository.findByUser(getCurrentUser());
     }
 
     public Resume updateResume(Long id, Resume updated) {

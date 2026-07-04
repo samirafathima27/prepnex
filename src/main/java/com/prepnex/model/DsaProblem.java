@@ -28,4 +28,8 @@ public class DsaProblem {
     private Integer problemsSolved;
 
     private LocalDate lastRevisedDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

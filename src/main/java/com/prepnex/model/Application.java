@@ -28,4 +28,8 @@ public class Application {
 
     @NotNull(message = "Applied date is required")
     private LocalDate appliedDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

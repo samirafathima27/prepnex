@@ -1,8 +1,11 @@
 package com.prepnex.service;
 
 import com.prepnex.model.MockInterview;
+import com.prepnex.model.User;
 import com.prepnex.repository.MockInterviewRepository;
+import com.prepnex.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +15,21 @@ import java.util.List;
 public class MockInterviewService {
 
     private final MockInterviewRepository mockInterviewRepository;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     public MockInterview addInterview(MockInterview interview) {
+        interview.setUser(getCurrentUser());
         return mockInterviewRepository.save(interview);
     }
 
     public List<MockInterview> getAllInterviews() {
-        return mockInterviewRepository.findAll();
+        return mockInterviewRepository.findByUser(getCurrentUser());
     }
 
     public MockInterview updateInterview(Long id, MockInterview updated) {

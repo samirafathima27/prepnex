@@ -22,4 +22,8 @@ public class Resume {
 
     private String companySentTo;
     private LocalDate uploadDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

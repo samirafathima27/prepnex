@@ -1,8 +1,11 @@
 package com.prepnex.service;
 
 import com.prepnex.model.Application;
+import com.prepnex.model.User;
 import com.prepnex.repository.ApplicationRepository;
+import com.prepnex.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +15,21 @@ import java.util.List;
 public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     public Application addApplication(Application application) {
+        application.setUser(getCurrentUser());
         return applicationRepository.save(application);
     }
 
     public List<Application> getAllApplications() {
-        return applicationRepository.findAll();
+        return applicationRepository.findByUser(getCurrentUser());
     }
 
     public Application updateApplication(Long id, Application updated) {
