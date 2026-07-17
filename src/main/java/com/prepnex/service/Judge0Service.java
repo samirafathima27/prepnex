@@ -16,6 +16,10 @@ import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -36,43 +40,80 @@ public class Judge0Service {
                 .orElseThrow(() -> new RuntimeException("Question not found"));
 
         SubmissionResponse response = new SubmissionResponse();
+        List<Map<String, Object>> testResults = new ArrayList<>();
 
-        try {
-            String output = executeCode(
-                    request.getLanguage(),
-                    request.getSourceCode(),
-                    question.getSampleInput() != null ? question.getSampleInput() : ""
-            );
+        // Build all test cases (sample + hidden)
+        List<String> inputs = new ArrayList<>();
+        List<String> expectedOutputs = new ArrayList<>();
 
-            String expectedOutput = question.getExpectedOutput() != null ?
-                    question.getExpectedOutput().trim() : "";
-            String actualOutput = output.trim();
-            boolean isCorrect = actualOutput.equals(expectedOutput);
-
-            response.setStatus("Accepted");
-            response.setOutput(actualOutput);
-            response.setExpectedOutput(expectedOutput);
-            response.setCorrect(isCorrect);
-            response.setMessage(isCorrect ? "Correct! Well done! 🎉" : "Wrong Answer. Try again!");
-
-            // Update user progress
-            User currentUser = getCurrentUser();
-            UserProgress progress = userProgressRepository
-                    .findByUserAndQuestion(currentUser, question)
-                    .orElse(new UserProgress());
-
-            progress.setUser(currentUser);
-            progress.setQuestion(question);
-            progress.setStatus(isCorrect ? "Solved" : "Attempted");
-            if (isCorrect) progress.setSolvedDate(LocalDate.now());
-            userProgressRepository.save(progress);
-
-        } catch (Exception e) {
-            response.setStatus("Error");
-            response.setOutput("");
-            response.setCorrect(false);
-            response.setMessage("Runtime Error: " + e.getMessage());
+        // Add sample test case
+        if (question.getSampleInput() != null) {
+            inputs.add(question.getSampleInput());
+            expectedOutputs.add(question.getExpectedOutput());
         }
+
+        // Add hidden test cases
+        if (question.getHiddenTestCases() != null && !question.getHiddenTestCases().isEmpty()) {
+            String[] hiddenInputs = question.getHiddenTestCases().split("\\|\\|");
+            String[] hiddenOutputs = question.getHiddenExpectedOutputs().split("\\|\\|");
+            for (int i = 0; i < hiddenInputs.length; i++) {
+                inputs.add(hiddenInputs[i].trim());
+                expectedOutputs.add(hiddenOutputs[i].trim());
+            }
+        }
+
+        int passed = 0;
+        long totalTime = 0;
+
+        for (int i = 0; i < inputs.size(); i++) {
+            Map<String, Object> testResult = new HashMap<>();
+            testResult.put("testCase", i + 1);
+            testResult.put("input", i == 0 ? inputs.get(i) : "Hidden");
+            testResult.put("expected", i == 0 ? expectedOutputs.get(i) : "Hidden");
+
+            try {
+                long startTime = System.currentTimeMillis();
+                String actualOutput = executeCode(request.getLanguage(), request.getSourceCode(), inputs.get(i));
+                long timeTaken = System.currentTimeMillis() - startTime;
+                totalTime += timeTaken;
+
+                boolean isCorrect = actualOutput.trim().equals(expectedOutputs.get(i).trim());
+                testResult.put("actual", i == 0 ? actualOutput.trim() : (isCorrect ? "Correct" : "Wrong"));
+                testResult.put("passed", isCorrect);
+                testResult.put("time", timeTaken + "ms");
+
+                if (isCorrect) passed++;
+            } catch (Exception e) {
+                testResult.put("actual", "Runtime Error");
+                testResult.put("passed", false);
+                testResult.put("time", "0ms");
+                testResult.put("error", e.getMessage());
+            }
+
+            testResults.add(testResult);
+        }
+
+        boolean allPassed = passed == inputs.size();
+
+        response.setCorrect(allPassed);
+        response.setStatus(allPassed ? "Accepted" : "Wrong Answer");
+        response.setMessage(allPassed ? "Accepted" : "Wrong Answer");
+        response.setOutput(passed + "/" + inputs.size() + " test cases passed");
+        response.setExpectedOutput(expectedOutputs.isEmpty() ? "" : expectedOutputs.get(0));
+        response.setTestResults(testResults);
+        response.setRuntime(totalTime + "ms");
+
+        // Update user progress
+        User currentUser = getCurrentUser();
+        UserProgress progress = userProgressRepository
+                .findByUserAndQuestion(currentUser, question)
+                .orElse(new UserProgress());
+
+        progress.setUser(currentUser);
+        progress.setQuestion(question);
+        progress.setStatus(allPassed ? "Solved" : "Attempted");
+        if (allPassed) progress.setSolvedDate(LocalDate.now());
+        userProgressRepository.save(progress);
 
         return response;
     }

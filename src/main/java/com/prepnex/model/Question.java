@@ -32,4 +32,10 @@ public class Question {
 
     @Column(columnDefinition = "TEXT")
     private String hints;
+
+    @Column(columnDefinition = "TEXT")
+    private String hiddenTestCases;
+
+    @Column(columnDefinition = "TEXT")
+    private String hiddenExpectedOutputs;
 }
